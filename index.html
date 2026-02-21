@@ -997,6 +997,7 @@
       btn.style.color=isAdmin?'#000':'var(--text-dim)';
       btn.style.borderColor=isAdmin?'var(--win)':'#333';
       updateRollBtn();
+      renderReps();
     }
 
     function updateRollBtn() {
@@ -1185,7 +1186,7 @@
           <div class="rep-earn">$${(rep.earnings||0).toFixed(0)}</div>
           <div class="rep-actions">
             <button class="btn btn-sm" onclick="openGiveTokenModal(${rep.id})" title="Sale!">+ Token</button>
-            <button class="btn btn-sm btn-ghost" style="opacity:0.3;font-size:0.65rem;padding:3px 5px" onclick="if(confirm('Remove ${rep.name}?'))removeRep(${rep.id})">rm</button>
+            ${isAdmin ? `<button class="btn btn-sm btn-ghost" style="opacity:0.5;font-size:0.65rem;padding:3px 5px;border-color:#c0392b;color:#e74c3c" onclick="if(confirm('Remove ${rep.name}?'))removeRep(${rep.id})">rm</button>` : ''}
           </div>
         `;
         list.appendChild(el);
