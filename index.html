@@ -1095,16 +1095,43 @@
     // BETTING
     // =====================
     function handleCellClick(num) {
-      // If myRepId set and they have tokens, go direct
       if (myRepId) {
         const free = getFreeTokens(myRepId);
         if (free > 0) {
-          placeBet(myRepId, num);
+          if (free === 1) {
+            placeBet(myRepId, num, 1);
+          } else {
+            openQuantityModal(myRepId, num, free);
+          }
           return;
         }
       }
-      // Otherwise show picker
       openBetModal(num);
+    }
+
+    function openQuantityModal(repId, num, maxTokens) {
+      const rep = reps.find(r => r.id === repId);
+      betTargetNum = num;
+      document.getElementById('bet-modal-num').textContent = num;
+      document.getElementById('bet-modal-payout').textContent = `$${PAYOUTS[num]}`;
+      const list = document.getElementById('rep-pick-list');
+      list.innerHTML = `
+        <div style="padding:0.5rem 0;font-size:0.9rem;color:var(--text-dim)">
+          <strong style="color:var(--text)">${rep.name}</strong> — how many tokens on ${num}?
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;padding:0.3rem 0">
+          ${Array.from({length: maxTokens}, (_,i) => i+1).map(n => `
+            <button class="btn" style="flex:1;min-width:40px;font-size:1.1rem;padding:0.6rem"
+              onclick="closeModal('bet-modal');placeBet(${repId},${num},${n})">
+              ${n}
+            </button>
+          `).join('')}
+        </div>
+        <div style="font-size:0.75rem;color:var(--text-dim);margin-top:0.5rem;text-align:center">
+          Payout: $${PAYOUTS[num]} per token
+        </div>
+      `;
+      document.getElementById('bet-modal').classList.add('active');
     }
 
     function openBetModal(num) {
@@ -1124,18 +1151,25 @@
           <span style="font-weight:700">${rep.name}</span>
           <span class="pick-free">${free} token${free!==1?'s':''}</span>
         `;
-        item.onclick = () => { closeModal('bet-modal'); placeBet(rep.id, num); };
+        item.onclick = () => {
+          if (free === 1) {
+            closeModal('bet-modal');
+            placeBet(rep.id, num, 1);
+          } else {
+            openQuantityModal(rep.id, num, free);
+          }
+        };
         list.appendChild(item);
       });
       document.getElementById('bet-modal').classList.add('active');
     }
 
-    async function placeBet(repId, num) {
+    async function placeBet(repId, num, tokens = 1) {
       const existing = bets.find(b => b.rep_id === repId && b.number === num);
       if (existing) {
-        await db.from('rr_bets').update({ tokens: existing.tokens + 1 }).eq('id', existing.id);
+        await db.from('rr_bets').update({ tokens: existing.tokens + tokens }).eq('id', existing.id);
       } else {
-        await db.from('rr_bets').insert({ rep_id: repId, number: num, tokens: 1 });
+        await db.from('rr_bets').insert({ rep_id: repId, number: num, tokens });
       }
     }
 
