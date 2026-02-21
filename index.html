@@ -472,6 +472,33 @@
 
     .win-flash.show { opacity: 1; }
 
+    /* CONFETTI CANVAS */
+    #confetti-canvas {
+      position: fixed; inset: 0; pointer-events: none; z-index: 250;
+    }
+
+    /* WIN BANNER */
+    .win-banner {
+      position: fixed; top: -120px; left: 50%; transform: translateX(-50%);
+      background: var(--surface); border: 3px solid var(--gold); border-radius: 10px;
+      padding: 1rem 2rem; text-align: center; z-index: 260; transition: top 0.4s cubic-bezier(0.34,1.56,0.64,1);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5); min-width: 280px;
+    }
+
+    .win-banner.show { top: 20px; }
+
+    .win-banner .banner-title {
+      font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; letter-spacing: 0.1em; color: var(--gold);
+    }
+
+    .win-banner .banner-winners {
+      font-size: 0.9rem; color: var(--text); margin-top: 0.3rem;
+    }
+
+    .win-banner .banner-payout {
+      font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: var(--win); letter-spacing: 0.05em;
+    }
+
     /* LOADING */
     .loading-screen {
       position: fixed; inset: 0; background: var(--bg);
@@ -501,6 +528,12 @@
 </head>
 <body>
   <div class="win-flash" id="win-flash"></div>
+  <canvas id="confetti-canvas"></canvas>
+  <div class="win-banner" id="win-banner">
+    <div class="banner-title">WINNER!</div>
+    <div class="banner-winners" id="banner-winners"></div>
+    <div class="banner-payout" id="banner-payout"></div>
+  </div>
 
   <div class="loading-screen" id="loading-screen">
     <div style="text-align:center">
@@ -652,6 +685,87 @@
   </div>
 
   <script>
+    // =====================
+    // CONFETTI ENGINE
+    // =====================
+    const confettiCanvas = document.getElementById('confetti-canvas');
+    const confettiCtx = confettiCanvas.getContext('2d');
+    let confettiParticles = [];
+    let confettiAnimFrame = null;
+
+    function resizeConfettiCanvas() {
+      confettiCanvas.width = window.innerWidth;
+      confettiCanvas.height = window.innerHeight;
+    }
+
+    window.addEventListener('resize', resizeConfettiCanvas);
+    resizeConfettiCanvas();
+
+    function launchConfetti(colors = ['#c9a227','#27ae60','#e74c3c','#3498db','#f0ede8','#e0b52e']) {
+      confettiParticles = [];
+      const count = 180;
+      for (let i = 0; i < count; i++) {
+        confettiParticles.push({
+          x: Math.random() * confettiCanvas.width,
+          y: -10,
+          w: 6 + Math.random() * 8,
+          h: 10 + Math.random() * 6,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          vx: (Math.random() - 0.5) * 6,
+          vy: 3 + Math.random() * 5,
+          rot: Math.random() * Math.PI * 2,
+          rotV: (Math.random() - 0.5) * 0.2,
+          opacity: 1,
+          shape: Math.random() > 0.4 ? 'rect' : 'circle'
+        });
+      }
+      if (confettiAnimFrame) cancelAnimationFrame(confettiAnimFrame);
+      animateConfetti();
+    }
+
+    function animateConfetti() {
+      confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+      let alive = false;
+      confettiParticles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.12;
+        p.rot += p.rotV;
+        if (p.y > confettiCanvas.height * 0.7) p.opacity -= 0.025;
+        if (p.opacity <= 0 || p.y > confettiCanvas.height + 20) return;
+        alive = true;
+        confettiCtx.save();
+        confettiCtx.globalAlpha = Math.max(0, p.opacity);
+        confettiCtx.translate(p.x, p.y);
+        confettiCtx.rotate(p.rot);
+        confettiCtx.fillStyle = p.color;
+        if (p.shape === 'circle') {
+          confettiCtx.beginPath();
+          confettiCtx.arc(0, 0, p.w / 2, 0, Math.PI * 2);
+          confettiCtx.fill();
+        } else {
+          confettiCtx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+        }
+        confettiCtx.restore();
+      });
+      if (alive) {
+        confettiAnimFrame = requestAnimationFrame(animateConfetti);
+      } else {
+        confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+      }
+    }
+
+    function showWinBanner(winnersArr, totalPayout) {
+      const banner = document.getElementById('win-banner');
+      document.getElementById('banner-winners').textContent = winnersArr.map(w => w.name).join(' & ');
+      document.getElementById('banner-payout').textContent = `+$${totalPayout}`;
+      banner.classList.add('show');
+      setTimeout(() => banner.classList.remove('show'), 3500);
+    }
+
+    // =====================
+    // SUPABASE
+    // =====================
     const SUPABASE_URL = 'https://khgxuruuedphulsimrzn.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoZ3h1cnV1ZWRwaHVsc2ltcnpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyOTY3MDgsImV4cCI6MjA4Njg3MjcwOH0.TgagNeF4dKzZX_B1jsKsPb9007JwXouhcBVEoWmAuPc';
 
@@ -945,12 +1059,26 @@
 
       // Show result immediately (realtime will update state)
       const resultEl = document.getElementById('roll-result');
+      const totalPayout = winners.reduce((s,w) => s + w.payout, 0);
+
       if (sevenOut) {
         resultEl.innerHTML = `
           <div class="total" style="color:var(--loss)">7</div>
           <div class="sub" style="color:var(--loss)">SEVEN OUT — all bets cleared${winners.length?' &bull; '+winners.map(w=>`<span class="winner-name">${w.name}</span> +$${w.payout}`).join(' &bull; '):''}
           </div>`;
+        // Still fire confetti if 7-bettors win, just in red
+        if (winners.length) {
+          launchConfetti(['#e74c3c','#c0392b','#e67e22','#f39c12']);
+          showWinBanner(winners, totalPayout);
+        }
       } else if (winners.length) {
+        // Big win confetti
+        const repColors = winners.map(w => {
+          const rep = reps.find(r => r.name === w.name);
+          return rep ? rep.color : '#c9a227';
+        });
+        launchConfetti(['#c9a227','#27ae60','#f0ede8', ...repColors]);
+        showWinBanner(winners, totalPayout);
         document.getElementById('win-flash').classList.add('show');
         setTimeout(()=>document.getElementById('win-flash').classList.remove('show'),600);
         resultEl.innerHTML = `
