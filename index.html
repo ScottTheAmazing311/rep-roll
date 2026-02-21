@@ -764,8 +764,8 @@
           </div>
           <div class="rep-earn">$${(rep.earnings||0).toFixed(0)}</div>
           <div class="rep-actions">
-            <button class="btn btn-sm" onclick="openGiveTokenModal(${rep.id})" title="Sale! Give token">+</button>
-            <button class="btn btn-sm btn-ghost" onclick="removeRep(${rep.id})" title="Remove">x</button>
+            <button class="btn btn-sm" onclick="openGiveTokenModal(${rep.id})" title="Sale! Give token">+ Token</button>
+            <button class="btn btn-sm btn-ghost" style="opacity:0.35;font-size:0.65rem;padding:3px 5px" onclick="if(confirm('Remove ${rep.name}?'))removeRep(${rep.id})" title="Remove rep">rm</button>
           </div>
         `;
         list.appendChild(card);
