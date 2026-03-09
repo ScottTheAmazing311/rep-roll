@@ -759,7 +759,19 @@
     <div class="banner-payout" id="banner-payout"></div>
   </div>
 
-  <div class="loading-screen" id="loading-screen">
+  <!-- ═══════ PLAYER GATE ═══════ -->
+  <div id="gate" style="position:fixed;inset:0;z-index:2000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;padding:2rem">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:clamp(3rem,8vw,5rem);color:var(--gold);letter-spacing:.08em;line-height:1;text-shadow:0 0 40px rgba(201,162,39,.4)">REP ROLL</div>
+    <div style="font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:var(--text-dim);margin:.5rem 0 2rem">Sales Incentive Craps</div>
+    <div style="font-family:'DM Sans',sans-serif;font-size:.8rem;letter-spacing:.15em;text-transform:uppercase;color:var(--text-dim);margin-bottom:.75rem">Select Your Name</div>
+    <div id="gate-player-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.75rem;max-width:660px;width:100%;margin-bottom:1.5rem"></div>
+    <button id="gate-enter-btn" disabled onclick="enterApp()" style="background:var(--gold);border:none;border-radius:6px;padding:.85rem 3rem;font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.15em;color:#000;cursor:pointer;transition:all .2s;margin-top:.5rem;opacity:.3;pointer-events:none">ENTER</button>
+    <button id="gate-admin-btn" onclick="toggleGateAdmin()" style="background:none;border:none;color:var(--text-dim);font-family:'DM Sans',sans-serif;font-size:.75rem;letter-spacing:.1em;cursor:pointer;margin-top:1rem;text-decoration:underline">Admin Login</button>
+    <input id="gate-admin-pw" type="password" placeholder="Admin PIN" style="display:none;background:rgba(255,255,255,.05);border:1px solid #333;border-radius:4px;padding:.5rem 1rem;font-family:'DM Sans',sans-serif;font-size:.85rem;color:var(--text);text-align:center;width:180px;outline:none;margin-top:.5rem" onkeydown="if(event.key==='Enter')checkGateAdmin()">
+    <div id="gate-admin-msg" style="font-family:'DM Sans',sans-serif;font-size:.8rem;letter-spacing:.1em;min-height:1.2rem;margin-top:.25rem"></div>
+  </div>
+
+  <div class="loading-screen hidden" id="loading-screen">
     <div style="text-align:center">
       <div class="spinner"></div>
       <div style="margin-top:1rem;font-family:'Bebas Neue',sans-serif;color:var(--gold);letter-spacing:0.1em">Entering the Casino...</div>
@@ -783,17 +795,18 @@
   </header>
 
   <!-- MY REP BAR -->
-  <div class="my-rep-bar">
-    <label>You are:</label>
-    <select id="my-rep-select" onchange="onMyRepChange()">
-      <option value="">-- Select your rep --</option>
-    </select>
+  <div class="my-rep-bar" id="my-rep-bar">
+    <div style="display:flex;align-items:center;gap:.6rem">
+      <img id="my-rep-img" src="" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);display:none">
+      <label id="my-rep-name-label" style="font-weight:700;color:var(--text);font-size:.9rem"></label>
+    </div>
     <div class="my-rep-indicator" id="my-rep-indicator" style="display:none">
       <div class="rep-dot" id="my-rep-dot"></div>
       <span id="my-rep-free"></span>
       <span class="free-tokens-badge" id="my-rep-badge" style="display:none">BET NOW</span>
     </div>
     <span style="margin-left:auto;font-size:0.72rem;color:var(--text-dim)">Click any number on the table to place your bet</span>
+    <button onclick="logoutApp()" style="background:none;border:1px solid #333;border-radius:4px;padding:.25rem .6rem;font-size:.7rem;font-weight:700;color:var(--text-dim);cursor:pointer;letter-spacing:.05em">LOGOUT</button>
   </div>
 
   <!-- ==================== THE TABLE ==================== -->
@@ -857,7 +870,6 @@
     <div class="panel">
       <div class="panel-head">
         Team
-        <button class="btn btn-sm" onclick="openAddRepModal()">+ Rep</button>
       </div>
       <div class="panel-body">
         <div class="rep-list" id="rep-list">
@@ -968,21 +980,140 @@
     const WORDS   = { 6:'SIX', 8:'EIGHT' };
     const REP_COLORS = ['#e74c3c','#3498db','#9b59b6','#e67e22','#1abc9c','#e91e63','#00bcd4','#ff9800','#8bc34a','#f06292','#ffb300','#26c6da'];
 
+    const CDN_HEADSHOTS = 'https://res.cloudinary.com/dsethujks/image/upload/rankings-tools/headshots';
+    const ADMIN_PIN = '0000';
+
+    const BDR_PLAYERS = [
+      { name:'Andrew Rockstroh', title:'Business Development', img:`${CDN_HEADSHOTS}/Andrew.png`, color:'#e74c3c' },
+      { name:'Bryan Fletcher',   title:'Business Development', img:`${CDN_HEADSHOTS}/Bryan.png`,   color:'#3498db' },
+      { name:'Matt Delaune',     title:'Business Development', img:`${CDN_HEADSHOTS}/Matt.png`,    color:'#9b59b6' },
+      { name:'Michael Helton',   title:'Business Development', img:`${CDN_HEADSHOTS}/MichaelH.png`,color:'#e67e22' },
+      { name:'Michael Wynkoop',  title:'Business Development', img:`${CDN_HEADSHOTS}/MichaelW.png`,color:'#1abc9c' },
+      { name:'Sydney Darrow',    title:'Business Development', img:`${CDN_HEADSHOTS}/Sydney.png`,  color:'#e91e63' },
+      { name:'Ryan David',       title:'Business Development', img:`${CDN_HEADSHOTS}/Ryan.png`,    color:'#00bcd4' },
+      { name:'Tyler Duprey',     title:'Business Development', img:`${CDN_HEADSHOTS}/Tyler.png`,   color:'#ff9800' },
+    ];
+
     let reps=[], bets=[], history=[], myRepId=null, giveTokenRepId=null, rolling=false;
-    let isAdmin = sessionStorage.getItem('rr-admin')==='true';
+    let isAdmin = false;
+    let currentPlayer = null;
+
+    // ==================== GATE ====================
+    function renderGate() {
+      const grid = document.getElementById('gate-player-grid');
+      grid.innerHTML = '';
+      BDR_PLAYERS.forEach(p => {
+        const div = document.createElement('div');
+        div.style.cssText = 'background:var(--surface);border:1px solid #2a2a3a;border-radius:8px;padding:.75rem;text-align:center;cursor:pointer;transition:all .2s';
+        div.innerHTML = `<img src="${p.img}" alt="${p.name}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;margin-bottom:.4rem;border:2px solid #2a2a3a;transition:border-color .2s" onerror="this.style.display='none'">
+          <div style="font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:700">${p.name}</div>
+          <div style="font-size:.6rem;color:var(--text-dim);margin-top:.1rem">${p.title}</div>`;
+        div.onmouseenter = () => { if(!div.classList.contains('sel')){div.style.borderColor='var(--gold)';div.style.transform='translateY(-2px)';} };
+        div.onmouseleave = () => { if(!div.classList.contains('sel')){div.style.borderColor='#2a2a3a';div.style.transform='';} };
+        div.onclick = () => {
+          document.querySelectorAll('#gate-player-grid > div').forEach(c => {c.classList.remove('sel');c.style.borderColor='#2a2a3a';c.style.background='var(--surface)';c.style.transform='';});
+          div.classList.add('sel');
+          div.style.borderColor='var(--gold)';
+          div.style.background='rgba(201,162,39,.1)';
+          div.style.boxShadow='0 0 20px rgba(201,162,39,.15)';
+          currentPlayer = p;
+          const btn = document.getElementById('gate-enter-btn');
+          btn.disabled = false; btn.style.opacity='1'; btn.style.pointerEvents='auto';
+        };
+        grid.appendChild(div);
+      });
+    }
+
+    function toggleGateAdmin() {
+      const el = document.getElementById('gate-admin-pw');
+      const isHidden = !el.style.display || el.style.display === 'none';
+      el.style.display = isHidden ? 'block' : 'none';
+      if (isHidden) { el.value = ''; el.focus(); }
+      document.getElementById('gate-admin-msg').textContent = '';
+    }
+
+    function checkGateAdmin() {
+      const pw = document.getElementById('gate-admin-pw').value.trim();
+      const msgEl = document.getElementById('gate-admin-msg');
+      if (pw === ADMIN_PIN) {
+        isAdmin = true;
+        document.getElementById('gate-admin-pw').style.display = 'none';
+        const btn = document.getElementById('gate-admin-btn');
+        btn.textContent = '✓ ADMIN MODE';
+        btn.style.color = 'var(--win)';
+        btn.style.textDecoration = 'none';
+        msgEl.textContent = 'Admin mode enabled — select a player to continue';
+        msgEl.style.color = 'var(--win)';
+      } else {
+        msgEl.textContent = 'Wrong PIN';
+        msgEl.style.color = 'var(--loss)';
+        document.getElementById('gate-admin-pw').value = '';
+        document.getElementById('gate-admin-pw').focus();
+      }
+    }
+
+    async function enterApp() {
+      if (!currentPlayer) return;
+      document.getElementById('gate').style.display = 'none';
+      document.getElementById('loading-screen').classList.remove('hidden');
+
+      // Set my rep bar
+      const imgEl = document.getElementById('my-rep-img');
+      imgEl.src = currentPlayer.img;
+      imgEl.style.display = '';
+      document.getElementById('my-rep-name-label').textContent = currentPlayer.name;
+
+      // Ensure all BDR players exist in DB
+      await ensureAllPlayers();
+      await loadAll();
+
+      // Find myself
+      const myRep = reps.find(r => r.name === currentPlayer.name);
+      if (myRep) myRepId = myRep.id;
+
+      if (isAdmin) updateAdminUI();
+      render();
+      subscribeRealtime();
+    }
+
+    function logoutApp() {
+      currentPlayer = null;
+      isAdmin = false;
+      myRepId = null;
+      const gate = document.getElementById('gate');
+      gate.style.display = 'flex';
+      document.getElementById('gate-admin-btn').textContent = 'Admin Login';
+      document.getElementById('gate-admin-btn').style.color = 'var(--text-dim)';
+      document.getElementById('gate-admin-btn').style.textDecoration = 'underline';
+      document.getElementById('gate-admin-msg').textContent = '';
+      document.querySelectorAll('#gate-player-grid > div').forEach(c => {c.classList.remove('sel');c.style.borderColor='#2a2a3a';c.style.background='var(--surface)';c.style.boxShadow='';});
+      const btn = document.getElementById('gate-enter-btn');
+      btn.disabled = true; btn.style.opacity='.3'; btn.style.pointerEvents='none';
+      updateAdminUI();
+    }
+
+    async function ensureAllPlayers() {
+      for (const p of BDR_PLAYERS) {
+        try {
+          const { data } = await db.from('rr_reps').select('id').eq('name', p.name).single();
+          if (!data) {
+            await db.from('rr_reps').insert({ name: p.name, color: p.color, tokens: 0, earnings: 0 });
+          }
+        } catch(e) {
+          try { await db.from('rr_reps').insert({ name: p.name, color: p.color, tokens: 0, earnings: 0 }); } catch(e2) {}
+        }
+      }
+    }
 
     function toggleAdmin() {
       if(isAdmin){
         isAdmin=false;
-        sessionStorage.removeItem('rr-admin');
         updateAdminUI();
       } else {
-        const pin = prompt('Enter admin PIN (default: 0000):');
-        const stored = sessionStorage.getItem('rr-pin')||'0000';
+        const pin = prompt('Enter admin PIN:');
         if(pin===null) return;
-        if(pin===stored){
+        if(pin===ADMIN_PIN){
           isAdmin=true;
-          sessionStorage.setItem('rr-admin','true');
           updateAdminUI();
         } else {
           alert('Wrong PIN.');
@@ -1142,6 +1273,11 @@
       ]);
       if(rR.error){console.error(rR.error);return;}
       reps=rR.data||[]; bets=bR.data||[]; history=hR.data||[];
+      // Update myRepId reference if needed
+      if(currentPlayer && !myRepId) {
+        const myRep = reps.find(r => r.name === currentPlayer.name);
+        if(myRep) myRepId = myRep.id;
+      }
       render();
       document.getElementById('loading-screen').classList.add('hidden');
     }
@@ -1171,22 +1307,24 @@
 
     function renderReps() {
       const list=document.getElementById('rep-list');
-      if(!reps.length){list.innerHTML='<div style="color:var(--text-dim);font-size:0.8rem;text-align:center;padding:1rem">No reps yet.</div>';return;}
+      const playerNames = BDR_PLAYERS.map(p=>p.name);
+      const filtered = reps.filter(r=>playerNames.includes(r.name));
+      if(!filtered.length){list.innerHTML='<div style="color:var(--text-dim);font-size:0.8rem;text-align:center;padding:1rem">Loading...</div>';return;}
       list.innerHTML='';
-      reps.forEach(rep=>{
+      filtered.forEach(rep=>{
         const free=getFreeTokens(rep.id), isMe=rep.id===myRepId;
+        const player = BDR_PLAYERS.find(p=>p.name===rep.name);
         const el=document.createElement('div');
         el.className=`rep-card${free>0?' has-tokens':''}${isMe?' is-me':''}`;
         el.innerHTML=`
-          <div class="rep-avatar" style="background:${rep.color}">${rep.name[0].toUpperCase()}</div>
+          ${player ? `<img src="${player.img}" alt="${rep.name}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid ${rep.color};flex-shrink:0" onerror="this.outerHTML='<div class=\\'rep-avatar\\' style=\\'background:${rep.color}\\'>${rep.name[0].toUpperCase()}</div>'">` : `<div class="rep-avatar" style="background:${rep.color}">${rep.name[0].toUpperCase()}</div>`}
           <div class="rep-info">
             <div class="rep-name">${rep.name}${isMe?' (you)':''}</div>
             <div class="rep-meta"><span class="count">${free}</span> token${free!==1?'s':''} free</div>
           </div>
           <div class="rep-earn">$${(rep.earnings||0).toFixed(0)}</div>
           <div class="rep-actions">
-            <button class="btn btn-sm" onclick="openGiveTokenModal(${rep.id})" title="Sale!">+ Token</button>
-            ${isAdmin ? `<button class="btn btn-sm btn-ghost" style="opacity:0.5;font-size:0.65rem;padding:3px 5px;border-color:#c0392b;color:#e74c3c" onclick="if(confirm('Remove ${rep.name}?'))removeRep(${rep.id})">rm</button>` : ''}
+            ${isAdmin ? `<button class="btn btn-sm" onclick="openGiveTokenModal(${rep.id})" title="Award token">+ Token</button>` : ''}
           </div>
         `;
         list.appendChild(el);
@@ -1194,11 +1332,6 @@
     }
 
     function renderMyRepBar() {
-      const sel=document.getElementById('my-rep-select');
-      const cur=sel.value;
-      sel.innerHTML='<option value="">-- Select your rep --</option>';
-      reps.forEach(r=>{const o=document.createElement('option');o.value=r.id;o.textContent=r.name;sel.appendChild(o);});
-      if(cur) sel.value=cur;
       const ind=document.getElementById('my-rep-indicator');
       if(myRepId){
         const rep=reps.find(r=>r.id===myRepId);
@@ -1209,7 +1342,6 @@
           const badge=document.getElementById('my-rep-badge');
           badge.style.display=free>0?'':'none';
           ind.style.display='flex';
-          // Highlight cells
           document.querySelectorAll('.place-cell,.field-cell,.prop-cell').forEach(c=>c.classList.toggle('can-bet',free>0));
         }
       } else {
@@ -1490,11 +1622,13 @@
       o.onclick=e=>{if(e.target===o)o.classList.remove('active');};
     });
 
+    // ==================== REP MANAGEMENT (legacy, kept for compatibility) ====================
+    function onMyRepChange() {} // no-op, replaced by gate
+
     // ==================== BOOT ====================
     initTable();
-    loadAll();
-    subscribeRealtime();
-    updateAdminUI();
+    renderGate();
+    // Don't load data or subscribe until player enters via gate
   </script>
 </body>
 </html>
