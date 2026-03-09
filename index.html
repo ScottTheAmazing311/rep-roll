@@ -997,6 +997,7 @@
     let reps=[], bets=[], history=[], myRepId=null, giveTokenRepId=null, rolling=false;
     let isAdmin = false;
     let currentPlayer = null;
+    let designatedRoller = null; // rep ID of who is allowed to roll
 
     // ==================== GATE ====================
     function renderGate() {
@@ -1131,21 +1132,40 @@
       renderReps();
     }
 
+    function designateRoller(repId) {
+      if (designatedRoller === repId) {
+        designatedRoller = null; // toggle off
+      } else {
+        designatedRoller = repId;
+      }
+      renderReps();
+      updateRollBtn();
+    }
+
     function updateRollBtn() {
       const hasBets = bets.length > 0;
       const rollBtn = document.getElementById('roll-btn');
       const status = document.getElementById('roll-status');
-      if(!isAdmin){
+      const rollerRep = designatedRoller ? reps.find(r=>r.id===designatedRoller) : null;
+      const iAmDesignated = designatedRoller && designatedRoller === myRepId;
+      const canRoll = isAdmin || iAmDesignated;
+
+      if(!designatedRoller){
         rollBtn.disabled=true;
-        status.textContent='Enable admin to roll';
+        status.textContent='Waiting for admin to assign a roller...';
         status.style.color='var(--text-dim)';
       } else if(!hasBets){
         rollBtn.disabled=true;
-        status.textContent='Waiting for bets...';
+        status.textContent=`${rollerRep?rollerRep.name:'?'} is up — waiting for bets...`;
         status.style.color='var(--text-dim)';
+      } else if(!canRoll){
+        rollBtn.disabled=true;
+        status.textContent=`🎲 ${rollerRep?rollerRep.name:'?'} is rolling!`;
+        status.style.color='var(--gold)';
       } else {
         rollBtn.disabled=false;
-        status.textContent=`${bets.reduce((s,b)=>s+b.tokens,0)} token${bets.reduce((s,b)=>s+b.tokens,0)!==1?'s':''} on the table`;
+        const tokenCount = bets.reduce((s,b)=>s+b.tokens,0);
+        status.textContent=`🎲 ${iAmDesignated?'Your roll!':rollerRep.name+"'s roll"} — ${tokenCount} token${tokenCount!==1?'s':''} on the table`;
         status.style.color='var(--win)';
       }
     }
@@ -1324,7 +1344,8 @@
           </div>
           <div class="rep-earn">$${(rep.earnings||0).toFixed(0)}</div>
           <div class="rep-actions">
-            ${isAdmin ? `<button class="btn btn-sm" onclick="openGiveTokenModal(${rep.id})" title="Award token">+ Token</button>` : ''}
+            ${isAdmin ? `<button class="btn btn-sm" onclick="openGiveTokenModal(${rep.id})" title="Award token">+ Token</button>
+            <button class="btn btn-sm${designatedRoller===rep.id?' btn-ghost':''}" style="${designatedRoller===rep.id?'background:var(--win);color:#000;border-color:var(--win)':'background:var(--gold);color:#000'};font-size:0.6rem;padding:3px 6px" onclick="designateRoller(${rep.id})">${designatedRoller===rep.id?'🎲 Rolling':'🎲 Roll'}</button>` : ''}
           </div>
         `;
         list.appendChild(el);
@@ -1419,7 +1440,7 @@
           const v1=Math.ceil(Math.random()*6), v2=Math.ceil(Math.random()*6);
           updateDie(d1,v1); updateDie(d2,v2);
           d1.classList.remove('rolling'); d2.classList.remove('rolling');
-          processRoll(v1+v2).finally(()=>{rolling=false;document.getElementById('roll-btn').disabled=false;});
+          processRoll(v1+v2).finally(()=>{rolling=false;designatedRoller=null;renderReps();updateRollBtn();});
         }
       },80);
     }
