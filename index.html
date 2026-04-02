@@ -1407,7 +1407,7 @@
         db.from(T.bets).select('*').order('id'),
         db.from(T.history).select('*').order('rolled_at',{ascending:false}).limit(50)
       ]);
-      if(rR.error){console.error(rR.error);return;}
+      if(rR.error||bR.error||hR.error){console.error('loadAll error:',rR.error,bR.error,hR.error);document.getElementById('loading-screen').classList.add('hidden');alert('Error loading data — check console');return;}
       reps=rR.data||[]; bets=bR.data||[]; history=hR.data||[];
       // Update myRepId reference if needed
       if(currentPlayer && !myRepId) {
