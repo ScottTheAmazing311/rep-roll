@@ -1003,12 +1003,12 @@
     const TEAMS = {
       rankings: {
         name: 'Rankings Team',
-        tables: { reps: 'rr_reps', bets: 'rr_bets', history: 'rr_history' },
+        tables: { reps: 'rr_reps', bets: 'rr_bets', history: 'rr_history', state: 'rr_state' },
         selfService: false
       },
       bill: {
         name: 'Bill Team',
-        tables: { reps: 'rr2_reps', bets: 'rr2_bets', history: 'rr2_history' },
+        tables: { reps: 'rr2_reps', bets: 'rr2_bets', history: 'rr2_history', state: 'rr2_state' },
         selfService: true
       }
     };
@@ -1248,14 +1248,9 @@
       renderReps();
     }
 
-    function designateRoller(repId) {
-      if (designatedRoller === repId) {
-        designatedRoller = null; // toggle off
-      } else {
-        designatedRoller = repId;
-      }
-      renderReps();
-      updateRollBtn();
+    async function designateRoller(repId) {
+      const newVal = designatedRoller === repId ? null : repId;
+      await db.from(T.state).upsert({ id: 1, designated_roller: newVal });
     }
 
     function updateRollBtn() {
@@ -1402,13 +1397,15 @@
 
     // ==================== LOAD / REALTIME ====================
     async function loadAll() {
-      const [rR, bR, hR] = await Promise.all([
+      const [rR, bR, hR, sR] = await Promise.all([
         db.from(T.reps).select('*').order('id'),
         db.from(T.bets).select('*').order('id'),
-        db.from(T.history).select('*').order('rolled_at',{ascending:false}).limit(50)
+        db.from(T.history).select('*').order('rolled_at',{ascending:false}).limit(50),
+        db.from(T.state).select('*').eq('id',1).single()
       ]);
       if(rR.error||bR.error||hR.error){console.error('loadAll error:',rR.error,bR.error,hR.error);document.getElementById('loading-screen').classList.add('hidden');alert('Error loading data — check console');return;}
       reps=rR.data||[]; bets=bR.data||[]; history=hR.data||[];
+      designatedRoller = sR.data ? sR.data.designated_roller : null;
       // Update myRepId reference if needed
       if(currentPlayer && !myRepId) {
         const myRep = reps.find(r => r.name === currentPlayer.name);
@@ -1423,6 +1420,7 @@
         .on('postgres_changes',{event:'*',schema:'public',table:T.reps},()=>loadAll())
         .on('postgres_changes',{event:'*',schema:'public',table:T.bets},()=>loadAll())
         .on('postgres_changes',{event:'*',schema:'public',table:T.history},()=>loadAll())
+        .on('postgres_changes',{event:'*',schema:'public',table:T.state},()=>loadAll())
         .subscribe(status=>{
           const live=status==='SUBSCRIBED';
           document.getElementById('conn-dot').className=`conn-dot${live?'':' off'}`;
@@ -1557,7 +1555,7 @@
           const v1=Math.ceil(Math.random()*6), v2=Math.ceil(Math.random()*6);
           updateDie(d1,v1); updateDie(d2,v2);
           d1.classList.remove('rolling'); d2.classList.remove('rolling');
-          processRoll(v1+v2).finally(()=>{rolling=false;designatedRoller=null;renderReps();updateRollBtn();});
+          processRoll(v1+v2).finally(async()=>{rolling=false;await db.from(T.state).upsert({id:1,designated_roller:null});renderReps();updateRollBtn();});
         }
       },80);
     }
