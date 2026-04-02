@@ -760,12 +760,29 @@
   </div>
 
   <!-- ═══════ PLAYER GATE ═══════ -->
-  <div id="gate" style="position:fixed;inset:0;z-index:2000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;padding:2rem">
+  <!-- TEAM SELECT -->
+  <div id="team-select" style="position:fixed;inset:0;z-index:3000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:clamp(3rem,8vw,5rem);color:var(--gold);letter-spacing:.08em;line-height:1;text-shadow:0 0 40px rgba(201,162,39,.4)">REP ROLL</div>
+    <div style="font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:var(--text-dim);margin:.5rem 0 2.5rem">Sales Incentive Craps</div>
+    <div style="font-family:'DM Sans',sans-serif;font-size:.8rem;letter-spacing:.15em;text-transform:uppercase;color:var(--text-dim);margin-bottom:1rem">Select Your Team</div>
+    <div id="team-grid" style="display:flex;gap:1.2rem;flex-wrap:wrap;justify-content:center"></div>
+  </div>
+
+  <div id="gate" style="position:fixed;inset:0;z-index:2000;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;padding:2rem">
     <div style="font-family:'Bebas Neue',sans-serif;font-size:clamp(3rem,8vw,5rem);color:var(--gold);letter-spacing:.08em;line-height:1;text-shadow:0 0 40px rgba(201,162,39,.4)">REP ROLL</div>
     <div style="font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:var(--text-dim);margin:.5rem 0 2rem">Sales Incentive Craps</div>
+    <div id="gate-team-label" style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--gold);letter-spacing:.1em;margin-bottom:.5rem"></div>
     <div style="font-family:'DM Sans',sans-serif;font-size:.8rem;letter-spacing:.15em;text-transform:uppercase;color:var(--text-dim);margin-bottom:.75rem">Select Your Name</div>
-    <div id="gate-player-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.75rem;max-width:660px;width:100%;margin-bottom:1.5rem"></div>
+    <div id="gate-player-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.75rem;max-width:660px;width:100%;margin-bottom:.5rem"></div>
+    <div id="gate-add-name" style="display:none;margin-bottom:1rem;text-align:center">
+      <div style="font-size:.75rem;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.5rem">Or add yourself</div>
+      <div style="display:flex;gap:.5rem;justify-content:center">
+        <input id="gate-new-name" type="text" placeholder="Your Name" maxlength="25" style="background:var(--surface);border:1px solid #333;border-radius:6px;padding:.5rem 1rem;font-family:'DM Sans',sans-serif;font-size:.9rem;color:var(--text);outline:none;width:200px" onkeydown="if(event.key==='Enter')joinAsNewPlayer()">
+        <button onclick="joinAsNewPlayer()" style="background:var(--gold);border:none;border-radius:6px;padding:.5rem 1.2rem;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:.1em;color:#000;cursor:pointer">JOIN</button>
+      </div>
+    </div>
     <button id="gate-enter-btn" disabled onclick="enterApp()" style="background:var(--gold);border:none;border-radius:6px;padding:.85rem 3rem;font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.15em;color:#000;cursor:pointer;transition:all .2s;margin-top:.5rem;opacity:.3;pointer-events:none">ENTER</button>
+    <button onclick="backToTeamSelect()" style="background:none;border:1px solid #333;border-radius:4px;padding:.4rem 1rem;font-size:.72rem;font-weight:700;color:var(--text-dim);cursor:pointer;letter-spacing:.08em;margin-top:.75rem">← CHANGE TEAM</button>
     <button id="gate-admin-btn" onclick="toggleGateAdmin()" style="background:none;border:none;color:var(--text-dim);font-family:'DM Sans',sans-serif;font-size:.75rem;letter-spacing:.1em;cursor:pointer;margin-top:1rem;text-decoration:underline">Admin Login</button>
     <input id="gate-admin-pw" type="password" placeholder="Admin PIN" style="display:none;background:rgba(255,255,255,.05);border:1px solid #333;border-radius:4px;padding:.5rem 1rem;font-family:'DM Sans',sans-serif;font-size:.85rem;color:var(--text);text-align:center;width:180px;outline:none;margin-top:.5rem" onkeydown="if(event.key==='Enter')checkGateAdmin()">
     <div id="gate-admin-msg" style="font-family:'DM Sans',sans-serif;font-size:.8rem;letter-spacing:.1em;min-height:1.2rem;margin-top:.25rem"></div>
@@ -983,6 +1000,22 @@
     const CDN_HEADSHOTS = 'https://res.cloudinary.com/dsethujks/image/upload/rankings-tools/headshots';
     const ADMIN_PIN = '0000';
 
+    const TEAMS = {
+      rankings: {
+        name: 'Rankings Team',
+        tables: { reps: 'rr_reps', bets: 'rr_bets', history: 'rr_history' },
+        selfService: false
+      },
+      bill: {
+        name: 'Bill Team',
+        tables: { reps: 'rr2_reps', bets: 'rr2_bets', history: 'rr2_history' },
+        selfService: true
+      }
+    };
+
+    let currentTeam = null;
+    let T = {}; // current team's table names
+
     const BDR_PLAYERS = [
       { name:'Andrew Rockstroh', title:'Business Development', img:`${CDN_HEADSHOTS}/Andrew.png`, color:'#e74c3c' },
       { name:'Bryan Fletcher',   title:'Business Development', img:`${CDN_HEADSHOTS}/Bryan.png`,   color:'#3498db' },
@@ -1002,30 +1035,98 @@
     let currentPlayer = null;
     let designatedRoller = null; // rep ID of who is allowed to roll
 
-    // ==================== GATE ====================
-    function renderGate() {
-      const grid = document.getElementById('gate-player-grid');
+    // ==================== TEAM SELECT ====================
+    function renderTeamSelect() {
+      const grid = document.getElementById('team-grid');
       grid.innerHTML = '';
-      BDR_PLAYERS.forEach(p => {
+      Object.entries(TEAMS).forEach(([key, team]) => {
         const div = document.createElement('div');
-        div.style.cssText = 'background:var(--surface);border:1px solid #2a2a3a;border-radius:8px;padding:.75rem;text-align:center;cursor:pointer;transition:all .2s';
-        div.innerHTML = `<img src="${p.img}" alt="${p.name}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;margin-bottom:.4rem;border:2px solid #2a2a3a;transition:border-color .2s" onerror="this.style.display='none'">
-          <div style="font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:700">${p.name}</div>
-          <div style="font-size:.6rem;color:var(--text-dim);margin-top:.1rem">${p.title}</div>`;
-        div.onmouseenter = () => { if(!div.classList.contains('sel')){div.style.borderColor='var(--gold)';div.style.transform='translateY(-2px)';} };
-        div.onmouseleave = () => { if(!div.classList.contains('sel')){div.style.borderColor='#2a2a3a';div.style.transform='';} };
-        div.onclick = () => {
-          document.querySelectorAll('#gate-player-grid > div').forEach(c => {c.classList.remove('sel');c.style.borderColor='#2a2a3a';c.style.background='var(--surface)';c.style.transform='';});
-          div.classList.add('sel');
-          div.style.borderColor='var(--gold)';
-          div.style.background='rgba(201,162,39,.1)';
-          div.style.boxShadow='0 0 20px rgba(201,162,39,.15)';
-          currentPlayer = p;
-          const btn = document.getElementById('gate-enter-btn');
-          btn.disabled = false; btn.style.opacity='1'; btn.style.pointerEvents='auto';
-        };
+        div.style.cssText = 'background:var(--surface);border:2px solid #2a2a3a;border-radius:12px;padding:2rem 3rem;text-align:center;cursor:pointer;transition:all .2s;min-width:200px';
+        div.innerHTML = `<div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--gold);letter-spacing:.06em">${team.name}</div>
+          <div style="font-size:.7rem;color:var(--text-dim);margin-top:.3rem">${team.selfService ? 'Add your own name' : BDR_PLAYERS.length + ' players'}</div>`;
+        div.onmouseenter = () => { div.style.borderColor='var(--gold)';div.style.transform='translateY(-3px)';div.style.boxShadow='0 8px 30px rgba(201,162,39,.15)'; };
+        div.onmouseleave = () => { div.style.borderColor='#2a2a3a';div.style.transform='';div.style.boxShadow=''; };
+        div.onclick = () => selectTeam(key);
         grid.appendChild(div);
       });
+    }
+
+    function selectTeam(key) {
+      currentTeam = TEAMS[key];
+      T = currentTeam.tables;
+      document.getElementById('team-select').style.display = 'none';
+      document.getElementById('gate').style.display = 'flex';
+      renderGate();
+    }
+
+    // ==================== GATE ====================
+    async function renderGate() {
+      const grid = document.getElementById('gate-player-grid');
+      grid.innerHTML = '';
+      document.getElementById('gate-add-name').style.display = 'none';
+      document.getElementById('gate-team-label').textContent = currentTeam.name;
+
+      if (!currentTeam.selfService) {
+        // Preset players mode (Rankings Team)
+        BDR_PLAYERS.forEach(p => {
+          const div = document.createElement('div');
+          div.style.cssText = 'background:var(--surface);border:1px solid #2a2a3a;border-radius:8px;padding:.75rem;text-align:center;cursor:pointer;transition:all .2s';
+          div.innerHTML = `<img src="${p.img}" alt="${p.name}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;margin-bottom:.4rem;border:2px solid #2a2a3a;transition:border-color .2s" onerror="this.style.display='none'">
+            <div style="font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:700">${p.name}</div>
+            <div style="font-size:.6rem;color:var(--text-dim);margin-top:.1rem">${p.title}</div>`;
+          div.onmouseenter = () => { if(!div.classList.contains('sel')){div.style.borderColor='var(--gold)';div.style.transform='translateY(-2px)';} };
+          div.onmouseleave = () => { if(!div.classList.contains('sel')){div.style.borderColor='#2a2a3a';div.style.transform='';} };
+          div.onclick = () => {
+            document.querySelectorAll('#gate-player-grid > div').forEach(c => {c.classList.remove('sel');c.style.borderColor='#2a2a3a';c.style.background='var(--surface)';c.style.transform='';c.style.boxShadow='';});
+            div.classList.add('sel');
+            div.style.borderColor='var(--gold)';
+            div.style.background='rgba(201,162,39,.1)';
+            div.style.boxShadow='0 0 20px rgba(201,162,39,.15)';
+            currentPlayer = p;
+            const btn = document.getElementById('gate-enter-btn');
+            btn.disabled = false; btn.style.opacity='1'; btn.style.pointerEvents='auto';
+          };
+          grid.appendChild(div);
+        });
+      } else {
+        // Self-service mode (Bill Team) — load existing players from DB
+        const { data: existingReps } = await db.from(T.reps).select('*').order('id');
+        if (existingReps && existingReps.length) {
+          existingReps.forEach(rep => {
+            const div = document.createElement('div');
+            div.style.cssText = 'background:var(--surface);border:1px solid #2a2a3a;border-radius:8px;padding:.75rem;text-align:center;cursor:pointer;transition:all .2s';
+            div.innerHTML = `<div style="width:60px;height:60px;border-radius:50%;background:${rep.color};display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:#fff;margin:0 auto .4rem">${rep.name[0].toUpperCase()}</div>
+              <div style="font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:700">${rep.name}</div>`;
+            div.onmouseenter = () => { if(!div.classList.contains('sel')){div.style.borderColor='var(--gold)';div.style.transform='translateY(-2px)';} };
+            div.onmouseleave = () => { if(!div.classList.contains('sel')){div.style.borderColor='#2a2a3a';div.style.transform='';} };
+            div.onclick = () => {
+              document.querySelectorAll('#gate-player-grid > div').forEach(c => {c.classList.remove('sel');c.style.borderColor='#2a2a3a';c.style.background='var(--surface)';c.style.transform='';c.style.boxShadow='';});
+              div.classList.add('sel');
+              div.style.borderColor='var(--gold)';
+              div.style.background='rgba(201,162,39,.1)';
+              div.style.boxShadow='0 0 20px rgba(201,162,39,.15)';
+              currentPlayer = { name: rep.name, color: rep.color, img: '', title: '' };
+              const btn = document.getElementById('gate-enter-btn');
+              btn.disabled = false; btn.style.opacity='1'; btn.style.pointerEvents='auto';
+            };
+            grid.appendChild(div);
+          });
+        }
+        // Show add-name section
+        document.getElementById('gate-add-name').style.display = 'block';
+      }
+    }
+
+    async function joinAsNewPlayer() {
+      const input = document.getElementById('gate-new-name');
+      const name = input.value.trim();
+      if (!name) return;
+      const color = REP_COLORS[(Math.floor(Math.random() * REP_COLORS.length))];
+      await db.from(T.reps).insert({ name, color, tokens: 0, earnings: 0 });
+      currentPlayer = { name, color, img: '', title: '' };
+      input.value = '';
+      // Go straight in
+      enterApp();
     }
 
     function toggleGateAdmin() {
@@ -1056,6 +1157,16 @@
       }
     }
 
+    function backToTeamSelect() {
+      currentPlayer = null;
+      currentTeam = null;
+      T = {};
+      document.getElementById('gate').style.display = 'none';
+      document.getElementById('team-select').style.display = 'flex';
+      const btn = document.getElementById('gate-enter-btn');
+      btn.disabled = true; btn.style.opacity='.3'; btn.style.pointerEvents='none';
+    }
+
     async function enterApp() {
       if (!currentPlayer) return;
       document.getElementById('gate').style.display = 'none';
@@ -1063,12 +1174,12 @@
 
       // Set my rep bar
       const imgEl = document.getElementById('my-rep-img');
-      imgEl.src = currentPlayer.img;
-      imgEl.style.display = '';
+      if (currentPlayer.img) { imgEl.src = currentPlayer.img; imgEl.style.display = ''; }
+      else { imgEl.style.display = 'none'; }
       document.getElementById('my-rep-name-label').textContent = currentPlayer.name;
 
-      // Ensure all BDR players exist in DB
-      await ensureAllPlayers();
+      // Ensure all preset players exist in DB (only for non-self-service teams)
+      if (!currentTeam.selfService) await ensureAllPlayers();
       await loadAll();
 
       // Find myself
@@ -1084,8 +1195,10 @@
       currentPlayer = null;
       isAdmin = false;
       myRepId = null;
-      const gate = document.getElementById('gate');
-      gate.style.display = 'flex';
+      currentTeam = null;
+      T = {};
+      document.getElementById('gate').style.display = 'none';
+      document.getElementById('team-select').style.display = 'flex';
       document.getElementById('gate-admin-btn').textContent = 'Admin Login';
       document.getElementById('gate-admin-btn').style.color = 'var(--text-dim)';
       document.getElementById('gate-admin-btn').style.textDecoration = 'underline';
@@ -1099,12 +1212,12 @@
     async function ensureAllPlayers() {
       for (const p of BDR_PLAYERS) {
         try {
-          const { data } = await db.from('rr_reps').select('id').eq('name', p.name).single();
+          const { data } = await db.from(T.reps).select('id').eq('name', p.name).single();
           if (!data) {
-            await db.from('rr_reps').insert({ name: p.name, color: p.color, tokens: 0, earnings: 0 });
+            await db.from(T.reps).insert({ name: p.name, color: p.color, tokens: 0, earnings: 0 });
           }
         } catch(e) {
-          try { await db.from('rr_reps').insert({ name: p.name, color: p.color, tokens: 0, earnings: 0 }); } catch(e2) {}
+          try { await db.from(T.reps).insert({ name: p.name, color: p.color, tokens: 0, earnings: 0 }); } catch(e2) {}
         }
       }
     }
@@ -1290,9 +1403,9 @@
     // ==================== LOAD / REALTIME ====================
     async function loadAll() {
       const [rR, bR, hR] = await Promise.all([
-        db.from('rr_reps').select('*').order('id'),
-        db.from('rr_bets').select('*').order('id'),
-        db.from('rr_history').select('*').order('rolled_at',{ascending:false}).limit(50)
+        db.from(T.reps).select('*').order('id'),
+        db.from(T.bets).select('*').order('id'),
+        db.from(T.history).select('*').order('rolled_at',{ascending:false}).limit(50)
       ]);
       if(rR.error){console.error(rR.error);return;}
       reps=rR.data||[]; bets=bR.data||[]; history=hR.data||[];
@@ -1306,10 +1419,10 @@
     }
 
     function subscribeRealtime() {
-      db.channel('rr-live')
-        .on('postgres_changes',{event:'*',schema:'public',table:'rr_reps'},()=>loadAll())
-        .on('postgres_changes',{event:'*',schema:'public',table:'rr_bets'},()=>loadAll())
-        .on('postgres_changes',{event:'*',schema:'public',table:'rr_history'},()=>loadAll())
+      db.channel('rr-live-'+T.reps)
+        .on('postgres_changes',{event:'*',schema:'public',table:T.reps},()=>loadAll())
+        .on('postgres_changes',{event:'*',schema:'public',table:T.bets},()=>loadAll())
+        .on('postgres_changes',{event:'*',schema:'public',table:T.history},()=>loadAll())
         .subscribe(status=>{
           const live=status==='SUBSCRIBED';
           document.getElementById('conn-dot').className=`conn-dot${live?'':' off'}`;
@@ -1330,8 +1443,9 @@
 
     function renderReps() {
       const list=document.getElementById('rep-list');
-      const playerNames = BDR_PLAYERS.map(p=>p.name);
-      const filtered = reps.filter(r=>playerNames.includes(r.name));
+      const filtered = currentTeam && !currentTeam.selfService
+        ? reps.filter(r=>BDR_PLAYERS.map(p=>p.name).includes(r.name))
+        : reps;
       if(!filtered.length){list.innerHTML='<div style="color:var(--text-dim);font-size:0.8rem;text-align:center;padding:1rem">Loading...</div>';return;}
       list.innerHTML='';
       filtered.forEach(rep=>{
@@ -1462,17 +1576,17 @@
       // Write earnings to DB
       for(const w of winners){
         const rep=reps.find(r=>r.id===w.repId);
-        await db.from('rr_reps').update({earnings:(rep.earnings||0)+w.payout}).eq('id',w.repId);
+        await db.from(T.reps).update({earnings:(rep.earnings||0)+w.payout}).eq('id',w.repId);
       }
 
       // Remove winning bets
-      if(betsOnNum.length) await db.from('rr_bets').delete().eq('number',total);
+      if(betsOnNum.length) await db.from(T.bets).delete().eq('number',total);
 
       // Seven out: wipe remaining bets
-      if(sevenOut) await db.from('rr_bets').delete().neq('id',0);
+      if(sevenOut) await db.from(T.bets).delete().neq('id',0);
 
       // History
-      await db.from('rr_history').insert({roll:total,seven_out:sevenOut,winners_json:winners.map(w=>({name:w.name,payout:w.payout}))});
+      await db.from(T.history).insert({roll:total,seven_out:sevenOut,winners_json:winners.map(w=>({name:w.name,payout:w.payout}))});
 
       // Show result
       const resultEl=document.getElementById('roll-result');
@@ -1546,7 +1660,7 @@
 
     async function removeBet(repId, num) {
       const bet=bets.find(b=>b.rep_id===repId&&b.number===num);
-      if(bet) await db.from('rr_bets').delete().eq('id',bet.id);
+      if(bet) await db.from(T.bets).delete().eq('id',bet.id);
     }
 
     async function moveBet(repId, fromNum, toNum, tokens) {
@@ -1588,8 +1702,8 @@
 
     async function placeBet(repId,num,tokens=1) {
       const existing=bets.find(b=>b.rep_id===repId&&b.number===num);
-      if(existing) await db.from('rr_bets').update({tokens:existing.tokens+tokens}).eq('id',existing.id);
-      else await db.from('rr_bets').insert({rep_id:repId,number:num,tokens});
+      if(existing) await db.from(T.bets).update({tokens:existing.tokens+tokens}).eq('id',existing.id);
+      else await db.from(T.bets).insert({rep_id:repId,number:num,tokens});
     }
 
     // ==================== REP MANAGEMENT ====================
@@ -1608,13 +1722,13 @@
     async function addRep() {
       const name=document.getElementById('new-rep-name').value.trim(); if(!name) return;
       const color=REP_COLORS[reps.length%REP_COLORS.length];
-      await db.from('rr_reps').insert({name,color,tokens:0,earnings:0});
+      await db.from(T.reps).insert({name,color,tokens:0,earnings:0});
       closeModal('add-rep-modal');
     }
 
     async function removeRep(id) {
-      await db.from('rr_bets').delete().eq('rep_id',id);
-      await db.from('rr_reps').delete().eq('id',id);
+      await db.from(T.bets).delete().eq('rep_id',id);
+      await db.from(T.reps).delete().eq('id',id);
       if(myRepId===id) myRepId=null;
     }
 
@@ -1628,15 +1742,15 @@
 
     async function confirmGiveToken() {
       const rep=reps.find(r=>r.id===giveTokenRepId); if(!rep) return;
-      await db.from('rr_reps').update({tokens:rep.tokens+1}).eq('id',giveTokenRepId);
+      await db.from(T.reps).update({tokens:rep.tokens+1}).eq('id',giveTokenRepId);
       closeModal('give-token-modal');
     }
 
     async function resetAll() {
       if(!confirm('Reset all earnings and tokens? Rep names stay.')) return;
-      await db.from('rr_bets').delete().neq('id',0);
-      await db.from('rr_history').delete().neq('id',0);
-      for(const rep of reps) await db.from('rr_reps').update({tokens:0,earnings:0}).eq('id',rep.id);
+      await db.from(T.bets).delete().neq('id',0);
+      await db.from(T.history).delete().neq('id',0);
+      for(const rep of reps) await db.from(T.reps).update({tokens:0,earnings:0}).eq('id',rep.id);
       document.getElementById('roll-result').innerHTML='';
     }
 
@@ -1651,7 +1765,7 @@
 
     // ==================== BOOT ====================
     initTable();
-    renderGate();
+    renderTeamSelect();
     // Don't load data or subscribe until player enters via gate
   </script>
 </body>
