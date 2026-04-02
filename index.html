@@ -1582,8 +1582,15 @@
       // Remove winning bets
       if(betsOnNum.length) await db.from(T.bets).delete().eq('number',total);
 
-      // Seven out: wipe remaining bets
-      if(sevenOut) await db.from(T.bets).delete().neq('id',0);
+      // Seven out: deduct lost tokens from reps, then wipe remaining bets
+      if(sevenOut) {
+        const remainingBets = bets.filter(b=>b.number!==total);
+        for(const bet of remainingBets) {
+          const rep = reps.find(r=>r.id===bet.rep_id);
+          if(rep) await db.from(T.reps).update({tokens: Math.max(0, rep.tokens - bet.tokens)}).eq('id', rep.id);
+        }
+        await db.from(T.bets).delete().neq('id',0);
+      }
 
       // History
       await db.from(T.history).insert({roll:total,seven_out:sevenOut,winners_json:winners.map(w=>({name:w.name,payout:w.payout}))});
